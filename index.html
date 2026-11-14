@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>আমার খরচের খাতা</title>
+  <meta name="theme-color" content="#764ba2" />
+  
+  <!-- PWA Manifest Link (সবচেয়ে জরুরি) -->
+  <link rel="manifest" href="manifest.json" />
+  
+  <!-- আইকন লিংক -->
+  <link rel="icon" type="image/png" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -13,7 +22,6 @@
       <div class="date" id="todayDate"></div>
     </header>
 
-    <!-- Settings / Daily Target -->
     <section class="card settings-card">
       <h2>⚙️ সেটিংস</h2>
       <div class="settings-row">
@@ -31,7 +39,6 @@
       </div>
     </section>
 
-    <!-- Add New Expense Category -->
     <section class="card">
       <h2>➕ নতুন খরচের খাত</h2>
       <div class="add-row">
@@ -40,7 +47,6 @@
       </div>
     </section>
 
-    <!-- Summary -->
     <section class="card summary-card">
       <h2>📊 সারসংক্ষেপ</h2>
       <div class="summary-grid">
@@ -59,14 +65,12 @@
       </div>
     </section>
 
-    <!-- Categories List -->
     <section class="card">
       <h2>🗂️ খরচের খাতসমূহ</h2>
       <div id="categoryList" class="category-list"></div>
       <div id="emptyState" class="empty">এখনো কোনো খাত নেই। উপরে Add করুন।</div>
     </section>
 
-    <!-- All Transactions -->
     <section class="card">
       <h2>📜 সব লেনদেন</h2>
       <div id="transactionList" class="transaction-list"></div>
@@ -74,19 +78,27 @@
     </section>
 
     <footer class="foot">
-      <p>© আপনার ব্যক্তিগত খরচের খাতা — সব ডাটা আপনার ব্রাউজারেই সংরক্ষিত</p>
+      <p>© আপনার ব্যক্তিগত খরচের খাতা</p>
     </footer>
   </div>
 
-  <!-- Toast Notification -->
   <div id="toast" class="toast"></div>
 
-  <!-- Notification Permission Bar -->
   <div id="notifBar" class="notif-bar hidden">
-    <span>🔔 দৈনিক টার্গেট অতিক্রম করলে নোটিফিকেশন পেতে চাইলে অনুমতি দিন</span>
+    <span>🔔 টার্গেট শেষ হলে নোটিফিকেশন পেতে অনুমতি দিন</span>
     <button id="enableNotifBtn" class="btn small">অনুমতি দিন</button>
   </div>
 
+  <!-- PWA Service Worker Register -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('SW registered'))
+          .catch(err => console.log('SW register failed', err));
+      });
+    }
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
