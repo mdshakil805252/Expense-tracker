@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>আমার খরচের খাতা</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <h1>💰 আমার খরচের খাতা</h1>
+      <div class="date" id="todayDate"></div>
+    </header>
+
+    <!-- Settings / Daily Target -->
+    <section class="card settings-card">
+      <h2>⚙️ সেটিংস</h2>
+      <div class="settings-row">
+        <label>দৈনিক খরচের টার্গেট (৳)</label>
+        <input type="number" id="dailyTargetInput" min="0" placeholder="যেমন: 500" />
+        <button id="saveTargetBtn" class="btn primary">সেভ</button>
+      </div>
+      <div class="target-info">
+        আজকের টার্গেট: <b id="todayTarget">0</b> ৳ |
+        আজ খরচ হয়েছে: <b id="todaySpent">0</b> ৳ |
+        বাকি: <b id="todayRemaining">0</b> ৳
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </section>
+
+    <!-- Add New Expense Category -->
+    <section class="card">
+      <h2>➕ নতুন খরচের খাত</h2>
+      <div class="add-row">
+        <input type="text" id="newCategoryInput" placeholder="খরচের নাম (যেমন: বাজার, যাতায়াত)" />
+        <button id="addCategoryBtn" class="btn primary">Add</button>
+      </div>
+    </section>
+
+    <!-- Summary -->
+    <section class="card summary-card">
+      <h2>📊 সারসংক্ষেপ</h2>
+      <div class="summary-grid">
+        <div class="summary-box income">
+          <span>মোট জমা (Cash)</span>
+          <b id="totalIncome">0 ৳</b>
+        </div>
+        <div class="summary-box expense">
+          <span>মোট খরচ</span>
+          <b id="totalExpense">0 ৳</b>
+        </div>
+        <div class="summary-box balance">
+          <span>বর্তমান ব্যালেন্স</span>
+          <b id="totalBalance">0 ৳</b>
+        </div>
+      </div>
+    </section>
+
+    <!-- Categories List -->
+    <section class="card">
+      <h2>🗂️ খরচের খাতসমূহ</h2>
+      <div id="categoryList" class="category-list"></div>
+      <div id="emptyState" class="empty">এখনো কোনো খাত নেই। উপরে Add করুন।</div>
+    </section>
+
+    <!-- All Transactions -->
+    <section class="card">
+      <h2>📜 সব লেনদেন</h2>
+      <div id="transactionList" class="transaction-list"></div>
+      <div id="emptyTx" class="empty">এখনো কোনো লেনদেন নেই।</div>
+    </section>
+
+    <footer class="foot">
+      <p>© আপনার ব্যক্তিগত খরচের খাতা — সব ডাটা আপনার ব্রাউজারেই সংরক্ষিত</p>
+    </footer>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Notification Permission Bar -->
+  <div id="notifBar" class="notif-bar hidden">
+    <span>🔔 দৈনিক টার্গেট অতিক্রম করলে নোটিফিকেশন পেতে চাইলে অনুমতি দিন</span>
+    <button id="enableNotifBtn" class="btn small">অনুমতি দিন</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
