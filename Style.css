@@ -303,7 +303,7 @@ input:focus {
   display: none;
 }
 
-.empty.show { display: none; } /* এখানে পরিবর্তন করা হয়েছে */
+.empty.show { display: block; }
 
 /* Toast */
 .toast {
