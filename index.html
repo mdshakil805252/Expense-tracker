@@ -4,12 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>আমার খরচের খাতা</title>
+  
+  <!-- PWA Requirements -->
   <meta name="theme-color" content="#764ba2" />
-  
-  <!-- PWA Manifest Link (সবচেয়ে জরুরি) -->
   <link rel="manifest" href="manifest.json" />
-  
-  <!-- আইকন লিংক -->
   <link rel="icon" type="image/png" href="icon-192.png" />
   <link rel="apple-touch-icon" href="icon-192.png" />
   
@@ -78,19 +76,20 @@
     </section>
 
     <footer class="foot">
-      <p>© আপনার ব্যক্তিগত খরচের খাতা</p>
+      <p>© আপনার ব্যক্তিগত খরচের খাতা — সব ডাটা আপনার ব্রাউজারেই সংরক্ষিত</p>
     </footer>
   </div>
 
   <div id="toast" class="toast"></div>
 
   <div id="notifBar" class="notif-bar hidden">
-    <span>🔔 টার্গেট শেষ হলে নোটিফিকেশন পেতে অনুমতি দিন</span>
+    <span>🔔 দৈনিক টার্গেট অতিক্রম করলে নোটিফিকেশন পেতে অনুমতি দিন</span>
     <button id="enableNotifBtn" class="btn small">অনুমতি দিন</button>
   </div>
 
-  <!-- PWA Service Worker Register -->
+  <script src="app.js"></script>
   <script>
+    // Service Worker Registration (PWA)
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
@@ -99,6 +98,5 @@
       });
     }
   </script>
-  <script src="app.js"></script>
 </body>
 </html>
