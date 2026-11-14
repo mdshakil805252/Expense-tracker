@@ -303,7 +303,7 @@ input:focus {
   display: none;
 }
 
-.empty.show { display: block; }
+.empty.show { display: none; } /* এখানে পরিবর্তন করা হয়েছে */
 
 /* Toast */
 .toast {
@@ -335,7 +335,7 @@ input:focus {
 /* Notification bar */
 .notif-bar {
   position: fixed;
-  top: 10px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
   background: #fff;
