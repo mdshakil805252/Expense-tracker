@@ -1,15 +1,20 @@
 {
-  "id": "/",
-  "name": "আমার খরচের খাতা - Smart Ledger",
+  "id": "/Expense-tracker/",
+  "name": "আমার খরচের খাতা",
   "short_name": "খরচের খাতা",
   "description": "দৈনিক খরচ, জমা ও ব্যক্তিভিত্তিক হিসাব রাখার স্মার্ট অফলাইন অ্যাপ।",
-  "start_url": "./index.html",
-  "scope": "./",
+  "lang": "bn",
+  "dir": "ltr",
+  "start_url": "/Expense-tracker/index.html",
+  "scope": "/Expense-tracker/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#6c5ce7",
   "theme_color": "#6c5ce7",
-  "categories": ["finance", "productivity"],
+  "categories": [
+    "finance",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "icon-192.png",
