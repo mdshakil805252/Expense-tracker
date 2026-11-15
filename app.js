@@ -2,11 +2,11 @@ const STORAGE_KEY = "expenseTrackerData_v2"; // নতুন ভার্সন
 
 let state = {
   settings: { dailyTarget: 500 },
-  persons: [], // [{ id, name, createdAt, comments: [] }]
-  transactions: [] // [{ id, personId, type, title, amount, note, date }]
+  persons: [], 
+  transactions: [] 
 };
 
-let currentPersonId = null; // কোন ব্যক্তির ডিটেইলস দেখা হচ্ছে
+let currentPersonId = null; 
 
 const $ = (sel) => document.querySelector(sel);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -40,23 +40,6 @@ function toast(msg, type = "") {
   }, 2800);
 }
 
-function requestNotifPermission() {
-  if (!("Notification" in window)) return toast("এই ব্রাউজারে নোটিফিকেশন সাপোর্ট করে না", "error");
-  Notification.requestPermission().then((perm) => {
-    if (perm === "granted") {
-      toast("নোটিফিকেশন চালু হয়েছে ✅", "success");
-      $("#notifBar").classList.add("hidden");
-    }
-  });
-}
-
-function sendNotification(title, body) {
-  if ("Notification" in window && Notification.permission === "granted") {
-    new Notification(title, { body, icon: "icon-192.png" });
-  }
-}
-
-// ক্যালকুলেশন হেল্পার
 function getPersonTotal(personId, type) {
   return state.transactions
     .filter((t) => t.personId === personId && t.type === type)
@@ -70,7 +53,6 @@ function todayExpense() {
     .reduce((s, t) => s + Number(t.amount || 0), 0);
 }
 
-// রেন্ডার ফাংশন
 function renderHeaderDate() {
   const now = new Date();
   const opts = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
@@ -128,9 +110,8 @@ function renderPersons() {
         <button class="btn danger small" data-del-person="${p.id}">🗑️</button>
       </div>
     `;
-    // কার্ডে ক্লিক করলে ডিটেইলস দেখাবে
     div.addEventListener("click", (e) => {
-      if (e.target.closest('button')) return; // ডিলিট বাটনে ক্লিক করলে ডিটেইলস খুলবে না
+      if (e.target.closest('button')) return;
       openPersonDetails(p.id);
     });
     list.appendChild(div);
@@ -147,7 +128,6 @@ function openPersonDetails(personId) {
   
   renderPersonDetails(personId);
   
-  // স্ক্রল করে ডিটেইলসে নিয়ে যাওয়া
   $("#personDetailsCard").scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -159,7 +139,6 @@ function renderPersonDetails(personId) {
   $("#detailsTotalExpense").textContent = fmt(exp) + " ৳";
   $("#detailsBalance").textContent = fmt(inc - exp) + " ৳";
 
-  // লেনদেন রেন্ডার
   const txList = $("#personTransactionList");
   txList.innerHTML = "";
   const txs = state.transactions.filter(t => t.personId === personId).sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -184,14 +163,13 @@ function renderPersonDetails(personId) {
     });
   }
 
-  // কমেন্ট রেন্ডার
   const person = state.persons.find(p => p.id === personId);
   const commentList = $("#personCommentList");
   commentList.innerHTML = "";
   if (!person.comments || person.comments.length === 0) {
     commentList.innerHTML = "<div class='empty show' style='display:block;'>কোনো কমেন্ট নেই।</div>";
   } else {
-    person.comments.forEach((c, index) => {
+    person.comments.forEach((c) => {
       const div = document.createElement("div");
       div.className = "comment-item";
       div.innerHTML = `
@@ -207,7 +185,6 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-// মডাল (Popup) তৈরি
 function showInputModal({ title, fields, initial = {}, onSubmit }) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay show";
@@ -243,9 +220,7 @@ function showInputModal({ title, fields, initial = {}, onSubmit }) {
   setTimeout(() => overlay.querySelector("input, textarea")?.focus(), 50);
 }
 
-// ইভেন্ট সেটআপ
 function setupEvents() {
-  // টার্গেট সেভ
   $("#saveTargetBtn").addEventListener("click", () => {
     const val = Number($("#dailyTargetInput").value);
     if (!val || val <= 0) return toast("সঠিক টার্গেট দিন", "error");
@@ -255,7 +230,6 @@ function setupEvents() {
     toast("✅ টার্গেট সেভ হয়েছে", "success");
   });
 
-  // নতুন ব্যক্তি যোগ
   $("#addPersonBtn").addEventListener("click", () => {
     const name = $("#newPersonInput").value.trim();
     if (!name) return toast("ব্যক্তির নাম লিখুন", "error");
@@ -268,7 +242,6 @@ function setupEvents() {
     toast("✅ ব্যক্তি যোগ হয়েছে", "success");
   });
 
-  // ব্যক্তি ডিলিট
   $("#personList").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-del-person]");
     if (btn) {
@@ -285,13 +258,11 @@ function setupEvents() {
     }
   });
 
-  // ডিটেইলস বন্ধ করা
   $("#closeDetailsBtn").addEventListener("click", () => {
     $("#personDetailsCard").classList.add("hidden");
     currentPersonId = null;
   });
 
-  // ব্যক্তির ভেতরে জমা যোগ
   $("#addPersonIncomeBtn").addEventListener("click", () => {
     if (!currentPersonId) return;
     showInputModal({
@@ -315,7 +286,6 @@ function setupEvents() {
     });
   });
 
-  // ব্যক্তির ভেতরে খরচ যোগ
   $("#addPersonExpenseBtn").addEventListener("click", () => {
     if (!currentPersonId) return;
     showInputModal({
@@ -341,7 +311,6 @@ function setupEvents() {
     });
   });
 
-  // ব্যক্তির ভেতরে কমেন্ট যোগ
   $("#addPersonCommentBtn").addEventListener("click", () => {
     if (!currentPersonId) return;
     showInputModal({
@@ -360,7 +329,6 @@ function setupEvents() {
     });
   });
 
-  // লেনদেন ডিলিট
   $("#personTransactionList").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-del-tx]");
     if (btn) {
@@ -376,7 +344,7 @@ function setupEvents() {
     }
   });
 
-  // PDF ডাউনলোড
+  // PDF জেনারেট ইভেন্ট
   $("#downloadPdfBtn").addEventListener("click", () => {
     if (!currentPersonId) return;
     const person = state.persons.find(p => p.id === currentPersonId);
@@ -384,7 +352,6 @@ function setupEvents() {
     const exp = getPersonTotal(currentPersonId, "expense");
     const txs = state.transactions.filter(t => t.personId === currentPersonId).sort((a,b) => new Date(a.date) - new Date(b.date));
 
-    // PDF টেমপ্লেটে ডাটা বসানো
     $("#pdfPersonName").textContent = person.name;
     $("#pdfDate").textContent = new Date().toLocaleDateString("bn-BD");
     $("#pdfIncome").textContent = fmt(inc) + " ৳";
@@ -423,28 +390,24 @@ function setupEvents() {
       pdfComments.innerHTML = "<li>কোনো কমেন্ট নেই</li>";
     }
 
-    // PDF তৈরি
     const element = document.getElementById("pdfTemplate");
-    element.style.display = "block"; // সাময়িকভাবে দেখানো
+    element.style.display = "block"; 
     
     const opt = {
       margin:       10,
-      filename:     `${person.name}_Expense_Report.pdf`,
+      filename:     `${person.name}_Report.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2 },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     html2pdf().set(opt).from(element).save().then(() => {
-      element.style.display = "none"; // ডাউনলোড শেষে আবার লুকানো
+      element.style.display = "none";
       toast("✅ PDF ডাউনলোড শুরু হয়েছে", "success");
     });
   });
-
-  $("#enableNotifBtn").addEventListener("click", requestNotifPermission);
 }
 
-// অ্যাপ শুরু
 function init() {
   loadState();
   renderHeaderDate();
