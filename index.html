@@ -2,149 +2,324 @@
 <html lang="bn">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>আমার খরচের খাতা</title>
   
-  <meta name="theme-color" content="#764ba2" />
+  <meta name="theme-color" content="#6c5ce7" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/png" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <link rel="stylesheet" href="style.css" />
   
-  <!-- PDF তৈরি করার লাইব্রেরি -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- PDF লাইব্রেরি -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 </head>
 <body>
-  <div class="app">
+  <div class="app-shell">
+    <!-- টপ অ্যাপ বার -->
     <header class="topbar">
-      <h1>💰 আমার খরচের খাতা</h1>
-      <div class="date" id="todayDate"></div>
+      <div>
+        <h1>💰 খরচের খাতা</h1>
+        <div class="date" id="todayDate"></div>
+      </div>
+      <div class="top-actions">
+        <button id="installAppBtn" class="icon-btn hidden" title="অ্যাপ ইনস্টল করুন">📲</button>
+        <button id="themeToggleBtn" class="icon-btn" title="ডার্ক/লাইট মোড">🌙</button>
+      </div>
     </header>
 
-    <!-- সেটিংস -->
-    <section class="card settings-card">
-      <h2>⚙️ সেটিংস</h2>
-      <div class="settings-row">
-        <label>দৈনিক খরচের টার্গেট (৳)</label>
-        <input type="number" id="dailyTargetInput" min="0" placeholder="যেমন: 500" />
-        <button id="saveTargetBtn" class="btn primary">সেভ</button>
-      </div>
-      <div class="target-info">
-        আজকের টার্গেট: <b id="todayTarget">0</b> ৳ |
-        আজ খরচ হয়েছে: <b id="todaySpent">0</b> ৳ |
-        বাকি: <b id="todayRemaining">0</b> ৳
-      </div>
-      <div class="progress-bar">
-        <div class="progress-fill" id="progressFill"></div>
-      </div>
-    </section>
-
-    <!-- নতুন ব্যক্তি যোগ করা -->
-    <section class="card">
-      <h2>👤 নতুন ব্যক্তির নাম</h2>
-      <div class="add-row">
-        <input type="text" id="newPersonInput" placeholder="ব্যক্তির নাম (যেমন: রহিম)" />
-        <button id="addPersonBtn" class="btn primary">Add Person</button>
-      </div>
-    </section>
-
-    <!-- ব্যক্তিদের তালিকা -->
-    <section class="card">
-      <h2>📋 ব্যক্তিদের তালিকা</h2>
-      <p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">(হিসাব দেখতে নামের ওপর ক্লিক করুন)</p>
-      <div id="personList" class="category-list"></div>
-      <div id="emptyPerson" class="empty">এখনো কোনো ব্যক্তির নাম নেই। উপরে Add করুন।</div>
-    </section>
-
-    <!-- ডিটেইলস ভিউ (যখন কোনো ব্যক্তির নামে ক্লিক করা হবে) -->
-    <section class="card hidden" id="personDetailsCard" style="border: 2px solid #667eea;">
-      <div class="details-header">
-        <h2 id="detailsPersonName">নাম</h2>
-        <button id="closeDetailsBtn" class="btn danger small">✖ বন্ধ করুন</button>
-      </div>
+    <!-- মেইন কন্টেন্ট এরিয়া -->
+    <main class="main-content">
       
-      <div class="summary-grid" style="margin-bottom: 16px;">
-        <div class="summary-box income">
-          <span>মোট জমা</span>
-          <b id="detailsTotalIncome">0 ৳</b>
-        </div>
-        <div class="summary-box expense">
-          <span>মোট খরচ</span>
-          <b id="detailsTotalExpense">0 ৳</b>
-        </div>
-        <div class="summary-box balance">
-          <span>ব্যালেন্স</span>
-          <b id="detailsBalance">0 ৳</b>
-        </div>
+      <!-- ট্যাব ১: হোম -->
+      <div id="tabHome" class="tab-view active">
+        <!-- সার্বিক ব্যালেন্স কার্ড -->
+        <section class="hero-card">
+          <div class="hero-balance-label">মোট বর্তমান ব্যালেন্স</div>
+          <div class="hero-balance" id="totalBalance">0 ৳</div>
+          <div class="hero-stats">
+            <div class="hero-stat-item">
+              <span>⬇️ মোট জমা</span>
+              <b id="totalIncome">0 ৳</b>
+            </div>
+            <div class="divider-v"></div>
+            <div class="hero-stat-item">
+              <span>⬆️ মোট খরচ</span>
+              <b id="totalExpense">0 ৳</b>
+            </div>
+          </div>
+        </section>
+
+        <!-- দৈনিক টার্গেট কার্ড -->
+        <section class="card">
+          <div class="card-header">
+            <h2>🎯 আজকের খরচের টার্গেট</h2>
+            <span class="badge" id="targetStatusBadge">সেট নেই</span>
+          </div>
+          <div class="target-numbers">
+            <span>টার্গেট: <b id="todayTarget">0</b> ৳</span>
+            <span>আজ খরচ: <b id="todaySpent">0</b> ৳</span>
+            <span>বাকি: <b id="todayRemaining">0</b> ৳</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <p class="smart-tip" id="smartTipText"></p>
+        </section>
+
+        <!-- নতুন ব্যক্তি ও সার্চ -->
+        <section class="card">
+          <div class="card-header">
+            <h2>👥 খাতা / ব্যক্তি তালিকা</h2>
+            <button id="openAddPersonModalBtn" class="btn primary small">➕ নতুন ব্যক্তি</button>
+          </div>
+          <div class="search-box">
+            <input type="search" id="searchPersonInput" placeholder="🔍 ব্যক্তির নাম দিয়ে খুঁজুন..." />
+          </div>
+          <div id="personList" class="person-list"></div>
+          <div id="emptyPerson" class="empty">এখনো কোনো ব্যক্তির নাম যোগ করা হয়নি। উপরে "নতুন ব্যক্তি" বাটনে ক্লিক করুন।</div>
+        </section>
       </div>
 
-      <div class="add-row" style="margin-bottom: 16px;">
-        <button id="addPersonIncomeBtn" class="btn primary" style="flex:1;">➕ জমা যোগ</button>
-        <button id="addPersonExpenseBtn" class="btn danger" style="flex:1;">➖ খরচ যোগ</button>
-        <button id="addPersonCommentBtn" class="btn ghost" style="flex:1;">💬 কমেন্ট</button>
+      <!-- ট্যাব ২: ব্যক্তির ডিটেইলস ভিউ (হোম থেকে ক্লিক করলে ওপেন হবে) -->
+      <div id="personDetailsView" class="tab-view hidden">
+        <div class="details-topbar">
+          <button id="backToHomeBtn" class="btn ghost small">⬅️ ফিরে যান</button>
+          <div class="details-actions-top">
+            <button id="sharePersonBtn" class="icon-btn-sm" title="শেয়ার করুন">📤</button>
+            <button id="downloadPdfBtn" class="icon-btn-sm" title="PDF ডাউনলোড">📥</button>
+            <button id="deletePersonBtn" class="icon-btn-sm danger-text" title="ব্যক্তি ডিলিট">🗑️</button>
+          </div>
+        </div>
+
+        <section class="card details-hero">
+          <h2 id="detailsPersonName">নাম</h2>
+          <p id="detailsPersonPhone" class="sub-text"></p>
+          <div class="summary-grid">
+            <div class="summary-box income">
+              <span>মোট জমা</span>
+              <b id="detailsTotalIncome">0 ৳</b>
+            </div>
+            <div class="summary-box expense">
+              <span>মোট খরচ</span>
+              <b id="detailsTotalExpense">0 ৳</b>
+            </div>
+            <div class="summary-box balance">
+              <span>ব্যালেন্স</span>
+              <b id="detailsBalance">0 ৳</b>
+            </div>
+          </div>
+          <div class="action-buttons-row">
+            <button id="addPersonIncomeBtn" class="btn success flex-1">➕ জমা যোগ</button>
+            <button id="addPersonExpenseBtn" class="btn danger flex-1">➖ খরচ যোগ</button>
+            <button id="addPersonCommentBtn" class="btn ghost">💬 নোট</button>
+          </div>
+        </section>
+
+        <!-- লেনদেন ফিল্টার ও তালিকা -->
+        <section class="card">
+          <div class="card-header">
+            <h3>📜 লেনদেনের ইতিহাস</h3>
+            <div class="filter-pills">
+              <button class="pill active" data-filter="all">সব</button>
+              <button class="pill" data-filter="income">জমা</button>
+              <button class="pill" data-filter="expense">খরচ</button>
+            </div>
+          </div>
+          <div id="personTransactionList" class="transaction-list"></div>
+        </section>
+
+        <!-- কমেন্টসমূহ -->
+        <section class="card">
+          <h3>💬 কমেন্ট ও নোট</h3>
+          <div id="personCommentList" class="comment-list"></div>
+        </section>
       </div>
 
-      <h3>📜 লেনদেনের ইতিহাস</h3>
-      <div id="personTransactionList" class="transaction-list" style="margin-top: 10px;"></div>
-      
-      <h3 style="margin-top: 16px;">💬 কমেন্টসমূহ</h3>
-      <div id="personCommentList" class="comment-list" style="margin-top: 10px;"></div>
+      <!-- ট্যাব ৩: রিপোর্ট ও অ্যানালিটিক্স -->
+      <div id="tabAnalytics" class="tab-view">
+        <section class="card">
+          <h2>📊 মাসিক সারসংক্ষেপ (<span id="currentMonthName"></span>)</h2>
+          <div class="summary-grid" style="margin-top: 12px;">
+            <div class="summary-box income">
+              <span>এই মাসে জমা</span>
+              <b id="monthIncome">0 ৳</b>
+            </div>
+            <div class="summary-box expense">
+              <span>এই মাসে খরচ</span>
+              <b id="monthExpense">0 ৳</b>
+            </div>
+            <div class="summary-box balance">
+              <span>মাসিক নিট</span>
+              <b id="monthNet">0 ৳</b>
+            </div>
+          </div>
+        </section>
 
-      <!-- PDF বাটন -->
-      <button id="downloadPdfBtn" class="btn primary" style="width: 100%; margin-top: 20px; font-size: 1.1rem; padding: 15px;">📥 PDF ডাউনলোড করুন</button>
-    </section>
-
-    <!-- গ্লোবাল সারসংক্ষেপ -->
-    <section class="card summary-card">
-      <h2>📊 সার্বিক সারসংক্ষেপ</h2>
-      <div class="summary-grid">
-        <div class="summary-box income">
-          <span>মোট জমা (Cash)</span>
-          <b id="totalIncome">0 ৳</b>
-        </div>
-        <div class="summary-box expense">
-          <span>মোট খরচ</span>
-          <b id="totalExpense">0 ৳</b>
-        </div>
-        <div class="summary-box balance">
-          <span>বর্তমান ব্যালেন্স</span>
-          <b id="totalBalance">0 ৳</b>
-        </div>
+        <section class="card">
+          <h2>📈 খাত ভিত্তিক খরচের তুলনা</h2>
+          <p class="sub-text">কোন ব্যক্তির/খাতে কত খরচ হয়েছে</p>
+          <div id="analyticsChart" class="bar-chart-container"></div>
+        </section>
       </div>
-    </section>
 
-    <footer class="foot">
-      <p>© আপনার ব্যক্তিগত খরচের খাতা</p>
-    </footer>
+      <!-- ট্যাব ৪: সেটিংস ও ব্যাকআপ -->
+      <div id="tabSettings" class="tab-view">
+        <section class="card">
+          <h2>⚙️ দৈনিক টার্গেট সেটিংস</h2>
+          <div class="form-group">
+            <label>দৈনিক খরচের লিমিট (৳)</label>
+            <div class="input-row">
+              <input type="number" id="dailyTargetInput" min="0" placeholder="যেমন: 500" />
+              <button id="saveTargetBtn" class="btn primary">সেভ</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>💾 ডাটা ব্যাকআপ ও রিস্টোর</h2>
+          <p class="sub-text">আপনার সব হিসাব নিরাপদ রাখতে ফাইল হিসেবে সেভ করে রাখুন।</p>
+          <div class="action-buttons-row" style="margin-top: 12px;">
+            <button id="exportBackupBtn" class="btn primary flex-1">⬇️ ব্যাকআপ নিন (JSON)</button>
+            <label for="importBackupInput" class="btn ghost flex-1" style="text-align:center; cursor:pointer;">⬆️ রিস্টোর করুন</label>
+            <input type="file" id="importBackupInput" accept=".json" class="hidden" />
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>⚠️ ডেঞ্জার জোন</h2>
+          <button id="resetAllDataBtn" class="btn danger full-width" style="margin-top: 8px;">🗑️ সব ডাটা মুছে ফেলুন</button>
+        </section>
+      </div>
+
+    </main>
+
+    <!-- ফ্লোটিং অ্যাকশন বাটন (Quick Add) -->
+    <button id="fabAddBtn" class="fab" title="দ্রুত লেনদেন যোগ করুন">➕</button>
+
+    <!-- বটম নেভিগেশন বার -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="tabHome">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">হোম</span>
+      </button>
+      <button class="nav-item" data-tab="tabAnalytics">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">রিপোর্ট</span>
+      </button>
+      <button class="nav-item" data-tab="tabSettings">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">সেটিংস</span>
+      </button>
+    </nav>
   </div>
 
+  <!-- মডাল ১: নতুন ব্যক্তি যোগ -->
+  <div id="personModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>👤 নতুন ব্যক্তি / খাত যোগ</h3>
+        <button class="close-modal icon-btn-sm">✖</button>
+      </div>
+      <div class="form-group">
+        <label>নাম *</label>
+        <input type="text" id="newPersonInput" placeholder="যেমন: রহিম / বাসা ভাড়া" />
+      </div>
+      <div class="form-group">
+        <label>মোবাইল নম্বর (ঐচ্ছিক - WhatsApp শেয়ারের জন্য)</label>
+        <input type="tel" id="newPersonPhone" placeholder="যেমন: 017XXXXXXXX" />
+      </div>
+      <button id="savePersonBtn" class="btn primary full-width">সংরক্ষণ করুন</button>
+    </div>
+  </div>
+
+  <!-- মডাল ২: লেনদেন যোগ / এডিট -->
+  <div id="txModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="txModalTitle">নতুন লেনদেন</h3>
+        <button class="close-modal icon-btn-sm">✖</button>
+      </div>
+      <div class="form-group" id="txPersonSelectGroup">
+        <label>ব্যক্তি / খাত নির্বাচন করুন</label>
+        <select id="txPersonSelect"></select>
+      </div>
+      <div class="type-toggle">
+        <button type="button" class="type-btn active-income" id="typeIncomeBtn">➕ জমা (Income)</button>
+        <button type="button" class="type-btn" id="typeExpenseBtn">➖ খরচ (Expense)</button>
+      </div>
+      <div class="form-group">
+        <label>টাকার পরিমাণ (৳) *</label>
+        <input type="number" id="txAmountInput" min="1" step="any" placeholder="0" inputmode="decimal" />
+        <div class="quick-chips">
+          <button type="button" class="chip" data-add="50">+৫০</button>
+          <button type="button" class="chip" data-add="100">+১০০</button>
+          <button type="button" class="chip" data-add="500">+৫০০</button>
+          <button type="button" class="chip" data-add="1000">+১০০০</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>বিবরণ / কারণ</label>
+        <input type="text" id="txNoteInput" placeholder="যেমন: বাজার খরচ / বেতন / ধার" />
+      </div>
+      <div class="form-group">
+        <label>তারিখ</label>
+        <input type="date" id="txDateInput" />
+      </div>
+      <button id="saveTxBtn" class="btn primary full-width">সেভ করুন</button>
+    </div>
+  </div>
+
+  <!-- মডাল ৩: কমেন্ট যোগ -->
+  <div id="commentModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>💬 নতুন নোট / কমেন্ট</h3>
+        <button class="close-modal icon-btn-sm">✖</button>
+      </div>
+      <div class="form-group">
+        <textarea id="commentInput" rows="3" placeholder="এখানে আপনার নোট লিখুন..."></textarea>
+      </div>
+      <button id="saveCommentBtn" class="btn primary full-width">কমেন্ট যোগ করুন</button>
+    </div>
+  </div>
+
+  <!-- টোস্ট মেসেজ -->
   <div id="toast" class="toast"></div>
 
-  <!-- PDF তৈরি করার জন্য লুকানো টেমপ্লেট -->
-  <div id="pdfTemplate" style="display: none; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #fff; color: #000;">
-    <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #764ba2; padding-bottom: 10px;">
-      <h1 style="color: #764ba2; margin: 0;">হিসাবের রিপোর্ট</h1>
-      <p style="margin: 5px 0 0 0; color: #555;">ব্যক্তি: <b id="pdfPersonName"></b></p>
-      <p style="margin: 5px 0 0 0; color: #555; font-size: 0.9rem;">তারিখ: <span id="pdfDate"></span></p>
-    </div>
-    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; background: #f8f9ff; padding: 15px; border-radius: 10px;">
-      <div>মোট জমা: <b id="pdfIncome" style="color: #11998e;"></b></div>
-      <div>মোট খরচ: <b id="pdfExpense" style="color: #d63031;"></b></div>
-      <div>ব্যালেন্স: <b id="pdfBalance" style="color: #4a3fb5;"></b></div>
-    </div>
-    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-      <thead>
-        <tr style="background: #764ba2; color: #fff;">
-          <th style="padding: 8px; text-align: left;">তারিখ</th>
-          <th style="padding: 8px; text-align: left;">বিবরণ</th>
-          <th style="padding: 8px; text-align: right;">জমা</th>
-          <th style="padding: 8px; text-align: right;">খরচ</th>
-        </tr>
-      </thead>
-      <tbody id="pdfTableBody"></tbody>
-    </table>
-    <div style="margin-top: 20px;">
-      <h3 style="color: #764ba2; border-bottom: 1px solid #ccc; padding-bottom: 5px;">কমেন্টসমূহ</h3>
-      <ul id="pdfComments" style="padding-left: 20px; color: #444;"></ul>
+  <!-- PDF তৈরির জন্য অফ-স্ক্রিন টেমপ্লেট (display:none নয়, যাতে blank PDF না আসে) -->
+  <div id="pdfWrapper" style="position: fixed; left: -9999px; top: 0; width: 780px; background: #fff;">
+    <div id="pdfTemplate" style="padding: 25px; font-family: sans-serif; background: #fff; color: #111;">
+      <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #6c5ce7; padding-bottom: 10px;">
+        <h1 style="color: #6c5ce7; margin: 0;">হিসাবের রিপোর্ট</h1>
+        <p style="margin: 6px 0 0 0; color: #444;">ব্যক্তি / খাত: <b id="pdfPersonName"></b></p>
+        <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">রিপোর্ট তৈরির তারিখ: <span id="pdfDate"></span></p>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 20px; background: #f4f5ff; padding: 14px; border-radius: 8px;">
+        <div>মোট জমা: <b id="pdfIncome" style="color: #00b894;"></b></div>
+        <div>মোট খরচ: <b id="pdfExpense" style="color: #d63031;"></b></div>
+        <div>ব্যালেন্স: <b id="pdfBalance" style="color: #6c5ce7;"></b></div>
+      </div>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+        <thead>
+          <tr style="background: #6c5ce7; color: #fff;">
+            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">তারিখ</th>
+            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">বিবরণ</th>
+            <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">জমা</th>
+            <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">খরচ</th>
+          </tr>
+        </thead>
+        <tbody id="pdfTableBody"></tbody>
+      </table>
+      <div>
+        <h3 style="color: #6c5ce7; border-bottom: 1px solid #ddd; padding-bottom: 5px;">নোট / কমেন্টসমূহ</h3>
+        <ul id="pdfComments" style="padding-left: 20px; color: #444; font-size: 13px;"></ul>
+      </div>
     </div>
   </div>
 
@@ -152,7 +327,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW register failed', err));
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW error:', err));
       });
     }
   </script>
