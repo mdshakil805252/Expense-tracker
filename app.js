@@ -1,14 +1,12 @@
-/* =====================================================
-   Personal Expense Tracker — app.js
-   ===================================================== */
-
-const STORAGE_KEY = "expenseTrackerData_v1";
+const STORAGE_KEY = "expenseTrackerData_v2"; // নতুন ভার্সন
 
 let state = {
-  settings: { dailyTarget: 500, currency: "৳" },
-  categories: [],   
-  transactions: []  
+  settings: { dailyTarget: 500 },
+  persons: [], // [{ id, name, createdAt, comments: [] }]
+  transactions: [] // [{ id, personId, type, title, amount, note, date }]
 };
+
+let currentPersonId = null; // কোন ব্যক্তির ডিটেইলস দেখা হচ্ছে
 
 const $ = (sel) => document.querySelector(sel);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -25,7 +23,6 @@ function loadState() {
     if (raw) {
       const parsed = JSON.parse(raw);
       state = { ...state, ...parsed };
-      if (!state.settings) state.settings = { dailyTarget: 500, currency: "৳" };
     }
   } catch (e) {
     console.warn("Load failed", e);
@@ -44,44 +41,25 @@ function toast(msg, type = "") {
 }
 
 function requestNotifPermission() {
-  if (!("Notification" in window)) {
-    toast("এই ব্রাউজারে নোটিফিকেশন সাপোর্ট করে না", "error");
-    return;
-  }
-  if (Notification.permission === "granted") {
-    toast("নোটিফিকেশন ইতিমধ্যেই চালু আছে ✅", "success");
-    $("#notifBar").classList.add("hidden");
-    return;
-  }
+  if (!("Notification" in window)) return toast("এই ব্রাউজারে নোটিফিকেশন সাপোর্ট করে না", "error");
   Notification.requestPermission().then((perm) => {
     if (perm === "granted") {
       toast("নোটিফিকেশন চালু হয়েছে ✅", "success");
       $("#notifBar").classList.add("hidden");
-      new Notification("খরচের খাতা", {
-        body: "দৈনিক টার্গেট অতিক্রম করলে আমি আপনাকে জানাবো।",
-      });
-    } else {
-      toast("নোটিফিকেশন অনুমতি দেওয়া হয়নি", "warn");
     }
   });
 }
 
 function sendNotification(title, body) {
-  if (!("Notification" in window)) return;
-  if (Notification.permission === "granted") {
+  if ("Notification" in window && Notification.permission === "granted") {
     new Notification(title, { body, icon: "icon-192.png" });
   }
 }
 
-function totalIncome() {
+// ক্যালকুলেশন হেল্পার
+function getPersonTotal(personId, type) {
   return state.transactions
-    .filter((t) => t.type === "income")
-    .reduce((s, t) => s + Number(t.amount || 0), 0);
-}
-
-function totalExpense() {
-  return state.transactions
-    .filter((t) => t.type === "expense")
+    .filter((t) => t.personId === personId && t.type === type)
     .reduce((s, t) => s + Number(t.amount || 0), 0);
 }
 
@@ -92,12 +70,7 @@ function todayExpense() {
     .reduce((s, t) => s + Number(t.amount || 0), 0);
 }
 
-function categoryTotal(catId) {
-  return state.transactions
-    .filter((t) => t.type === "expense" && t.categoryId === catId)
-    .reduce((s, t) => s + Number(t.amount || 0), 0);
-}
-
+// রেন্ডার ফাংশন
 function renderHeaderDate() {
   const now = new Date();
   const opts = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
@@ -122,132 +95,130 @@ function renderSettingsAndProgress() {
   else if (pct >= 75) fill.classList.add("warn");
 }
 
-function renderSummary() {
-  const inc = totalIncome();
-  const exp = totalExpense();
+function renderGlobalSummary() {
+  const inc = state.transactions.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
+  const exp = state.transactions.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
   $("#totalIncome").textContent = fmt(inc) + " ৳";
   $("#totalExpense").textContent = fmt(exp) + " ৳";
   $("#totalBalance").textContent = fmt(inc - exp) + " ৳";
 }
 
-function renderCategories() {
-  const list = $("#categoryList");
-  const empty = $("#emptyState");
+function renderPersons() {
+  const list = $("#personList");
+  const empty = $("#emptyPerson");
   list.innerHTML = "";
 
-  if (state.categories.length === 0) {
-    empty.style.display = "block";
+  if (state.persons.length === 0) {
+    empty.classList.add("show");
     return;
   }
-  empty.style.display = "none";
+  empty.classList.remove("show");
 
-  state.categories.forEach((cat) => {
-    const total = categoryTotal(cat.id);
+  state.persons.forEach((p) => {
+    const inc = getPersonTotal(p.id, "income");
+    const exp = getPersonTotal(p.id, "expense");
     const div = document.createElement("div");
     div.className = "category-item";
     div.innerHTML = `
       <div class="cat-info">
-        <div class="cat-name">${escapeHtml(cat.name)}</div>
-        <div class="cat-amount">এই খাতে মোট খরচ: ${fmt(total)} ৳</div>
+        <div class="cat-name">👤 ${escapeHtml(p.name)}</div>
+        <div class="cat-amount">জমা: ${fmt(inc)} ৳ | খরচ: ${fmt(exp)} ৳</div>
       </div>
       <div class="cat-actions">
-        <button class="btn ghost small" data-action="add-expense" data-id="${cat.id}">➕ খরচ যোগ</button>
-        <button class="btn ghost small" data-action="comment" data-id="${cat.id}">💬 কমেন্ট</button>
-        <button class="btn danger small" data-action="delete-cat" data-id="${cat.id}">🗑️</button>
+        <button class="btn danger small" data-del-person="${p.id}">🗑️</button>
       </div>
     `;
-    list.appendChild(div);
-  });
-}
-
-function renderTransactions() {
-  const list = $("#transactionList");
-  const empty = $("#emptyTx");
-  list.innerHTML = "";
-
-  const sorted = [...state.transactions].sort(
-    (a, b) => new Date(b.date) - new Date(a.date)
-  );
-
-  if (sorted.length === 0) {
-    empty.style.display = "block";
-    return;
-  }
-  empty.style.display = "none";
-
-  sorted.forEach((tx) => {
-    const cat = state.categories.find((c) => c.id === tx.categoryId);
-    const title = tx.title || (cat ? cat.name : "খরচ");
-    const dateStr = new Date(tx.date).toLocaleString("bn-BD", {
-      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+    // কার্ডে ক্লিক করলে ডিটেইলস দেখাবে
+    div.addEventListener("click", (e) => {
+      if (e.target.closest('button')) return; // ডিলিট বাটনে ক্লিক করলে ডিটেইলস খুলবে না
+      openPersonDetails(p.id);
     });
-    const sign = tx.type === "income" ? "+" : "-";
-    const div = document.createElement("div");
-    div.className = "tx-item " + tx.type;
-    div.innerHTML = `
-      <div class="tx-left">
-        <div class="tx-title">${escapeHtml(title)}</div>
-        <div class="tx-meta">${dateStr}${tx.note ? " • " + escapeHtml(tx.note) : ""}</div>
-      </div>
-      <div class="tx-amount ${tx.type}">${sign}${fmt(tx.amount)} ৳</div>
-      <button class="tx-del" data-del="${tx.id}" title="ডিলিট">✖</button>
-    `;
     list.appendChild(div);
   });
 }
 
-function renderAll() {
-  renderSettingsAndProgress();
-  renderSummary();
-  renderCategories();
-  renderTransactions();
+function openPersonDetails(personId) {
+  const person = state.persons.find(p => p.id === personId);
+  if (!person) return;
+  
+  currentPersonId = personId;
+  $("#personDetailsCard").classList.remove("hidden");
+  $("#detailsPersonName").textContent = `👤 ${person.name} এর হিসাব`;
+  
+  renderPersonDetails(personId);
+  
+  // স্ক্রল করে ডিটেইলসে নিয়ে যাওয়া
+  $("#personDetailsCard").scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderPersonDetails(personId) {
+  const inc = getPersonTotal(personId, "income");
+  const exp = getPersonTotal(personId, "expense");
+  
+  $("#detailsTotalIncome").textContent = fmt(inc) + " ৳";
+  $("#detailsTotalExpense").textContent = fmt(exp) + " ৳";
+  $("#detailsBalance").textContent = fmt(inc - exp) + " ৳";
+
+  // লেনদেন রেন্ডার
+  const txList = $("#personTransactionList");
+  txList.innerHTML = "";
+  const txs = state.transactions.filter(t => t.personId === personId).sort((a,b) => new Date(b.date) - new Date(a.date));
+  
+  if (txs.length === 0) {
+    txList.innerHTML = "<div class='empty show' style='display:block;'>কোনো লেনদেন নেই।</div>";
+  } else {
+    txs.forEach(tx => {
+      const dateStr = new Date(tx.date).toLocaleString("bn-BD", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      const sign = tx.type === "income" ? "+" : "-";
+      const div = document.createElement("div");
+      div.className = "tx-item " + tx.type;
+      div.innerHTML = `
+        <div class="tx-left">
+          <div class="tx-title">${escapeHtml(tx.title)}</div>
+          <div class="tx-meta">${dateStr}${tx.note ? " • " + escapeHtml(tx.note) : ""}</div>
+        </div>
+        <div class="tx-amount ${tx.type}">${sign}${fmt(tx.amount)} ৳</div>
+        <button class="tx-del" data-del-tx="${tx.id}">✖</button>
+      `;
+      txList.appendChild(div);
+    });
+  }
+
+  // কমেন্ট রেন্ডার
+  const person = state.persons.find(p => p.id === personId);
+  const commentList = $("#personCommentList");
+  commentList.innerHTML = "";
+  if (!person.comments || person.comments.length === 0) {
+    commentList.innerHTML = "<div class='empty show' style='display:block;'>কোনো কমেন্ট নেই।</div>";
+  } else {
+    person.comments.forEach((c, index) => {
+      const div = document.createElement("div");
+      div.className = "comment-item";
+      div.innerHTML = `
+        <div>${escapeHtml(c.text)}</div>
+        <div style="font-size:0.75rem; color:#888; margin-top:4px;">${c.date}</div>
+      `;
+      commentList.appendChild(div);
+    });
+  }
 }
 
 function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-let targetAlertShownFor = null;
-
-function checkDailyTarget() {
-  const target = Number(state.settings.dailyTarget || 0);
-  if (target <= 0) return;
-  const spent = todayExpense();
-  const key = todayKey();
-
-  if (spent >= target && targetAlertShownFor !== key) {
-    targetAlertShownFor = key;
-    sendNotification(
-      "⚠️ আজকের খরচের টার্গেট শেষ!",
-      `আজ ${fmt(spent)} ৳ খরচ হয়েছে (টার্গেট ${fmt(target)} ৳)। আর কোনো খরচ করা যাবে না!`
-    );
-    toast("⚠️ আজকের টার্গেট ফুরিয়ে গেছে! আর খরচ করা যাবে না।", "error");
-  }
-}
-
+// মডাল (Popup) তৈরি
 function showInputModal({ title, fields, initial = {}, onSubmit }) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay show";
 
-  const fieldHtml = fields
-    .map((f) => {
-      const val = initial[f.id] ?? "";
-      if (f.type === "textarea") {
-        return `
-          <label>${f.label}</label>
-          <textarea id="m_${f.id}" rows="3" placeholder="${f.placeholder || ""}">${escapeHtml(val)}</textarea>
-        `;
-      }
-      return `
-        <label>${f.label}</label>
-        <input id="m_${f.id}" type="${f.type}" placeholder="${f.placeholder || ""}" value="${escapeHtml(val)}" />
-      `;
-    })
-    .join("");
+  const fieldHtml = fields.map((f) => {
+    const val = initial[f.id] ?? "";
+    if (f.type === "textarea") {
+      return `<label>${f.label}</label><textarea id="m_${f.id}" rows="3" placeholder="${f.placeholder || ""}">${escapeHtml(val)}</textarea>`;
+    }
+    return `<label>${f.label}</label><input id="m_${f.id}" type="${f.type}" placeholder="${f.placeholder || ""}" value="${escapeHtml(val)}" />`;
+  }).join("");
 
   overlay.innerHTML = `
     <div class="modal">
@@ -263,236 +234,224 @@ function showInputModal({ title, fields, initial = {}, onSubmit }) {
 
   const close = () => overlay.remove();
   overlay.querySelector("#mCancel").onclick = close;
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) close();
-  });
-
   overlay.querySelector("#mOk").onclick = () => {
     const vals = {};
-    fields.forEach((f) => {
-      vals[f.id] = overlay.querySelector("#m_" + f.id).value.trim();
-    });
+    fields.forEach((f) => { vals[f.id] = overlay.querySelector("#m_" + f.id).value.trim(); });
     close();
     onSubmit(vals);
   };
-
-  const firstInput = overlay.querySelector("input, textarea");
-  if (firstInput) setTimeout(() => firstInput.focus(), 50);
+  setTimeout(() => overlay.querySelector("input, textarea")?.focus(), 50);
 }
 
-function openIncomeModal() {
-  showInputModal({
-    title: "💵 জমা ক্যাশ যোগ করুন",
-    fields: [
-      { id: "amount", label: "টাকার পরিমাণ (৳)", type: "number", placeholder: "0" },
-      { id: "note", label: "নোট (ঐচ্ছিক)", type: "text", placeholder: "যেমন: বেতন" },
-    ],
-    onSubmit: (vals) => {
-      const amt = Number(vals.amount);
-      if (!amt || amt <= 0) return toast("সঠিক পরিমাণ দিন", "error");
-      state.transactions.push({
-        id: uid(),
-        type: "income",
-        categoryId: null,
-        title: "জমা ক্যাশ",
-        amount: amt,
-        note: vals.note || "",
-        date: new Date().toISOString(),
-      });
-      saveState();
-      renderAll();
-      toast("✅ জমা যোগ হয়েছে", "success");
-    },
-  });
-}
-
-function openExpenseModal(catId) {
-  const cat = state.categories.find((c) => c.id === catId);
-  if (!cat) return;
-
-  const target = Number(state.settings.dailyTarget || 0);
-  const spent = todayExpense();
-  if (target > 0 && spent >= target) {
-    toast("⛔ আজকের টার্গেট শেষ! নতুন খরচ করা যাবে না।", "error");
-    sendNotification(
-      "⛔ খরচ বন্ধ!",
-      "আজকের দৈনিক টার্গেট ইতিমধ্যেই শেষ হয়ে গেছে।"
-    );
-    return;
-  }
-
-  showInputModal({
-    title: `➕ "${cat.name}" খাতে খরচ`,
-    fields: [
-      { id: "amount", label: "টাকার পরিমাণ (৳)", type: "number", placeholder: "0" },
-      { id: "note", label: "নোট (ঐচ্ছিক)", type: "text", placeholder: "কী কিনলেন?" },
-    ],
-    onSubmit: (vals) => {
-      const amt = Number(vals.amount);
-      if (!amt || amt <= 0) return toast("সঠিক পরিমাণ দিন", "error");
-
-      if (target > 0 && spent + amt > target) {
-        const ok = confirm(
-          `⚠️ এই খরচ যোগ করলে আজকের টার্গেট (${fmt(target)} ৳) অতিক্রম হবে!\n` +
-          `এখন পর্যন্ত: ${fmt(spent)} ৳ + ${fmt(amt)} ৳\n\nতবুও যোগ করবেন?`
-        );
-        if (!ok) return;
-      }
-
-      state.transactions.push({
-        id: uid(),
-        type: "expense",
-        categoryId: catId,
-        title: cat.name,
-        amount: amt,
-        note: vals.note || "",
-        date: new Date().toISOString(),
-      });
-      saveState();
-      renderAll();
-      checkDailyTarget();
-      toast("✅ খরচ যোগ হয়েছে", "success");
-    },
-  });
-}
-
-function openCommentModal(catId) {
-  const cat = state.categories.find((c) => c.id === catId);
-  if (!cat) return;
-  showInputModal({
-    title: `💬 "${cat.name}" — কমেন্ট`,
-    fields: [
-      {
-        id: "comment",
-        label: "কমেন্ট লিখুন",
-        type: "textarea",
-        placeholder: "এই খাত সম্পর্কে কিছু লিখুন...",
-      },
-    ],
-    initial: { comment: cat.comment || "" },
-    onSubmit: (vals) => {
-      cat.comment = vals.comment || "";
-      saveState();
-      toast("✅ কমেন্ট সেভ হয়েছে", "success");
-    },
-  });
-}
-
+// ইভেন্ট সেটআপ
 function setupEvents() {
+  // টার্গেট সেভ
   $("#saveTargetBtn").addEventListener("click", () => {
     const val = Number($("#dailyTargetInput").value);
-    if (!val || val <= 0) {
-      toast("সঠিক টার্গেট দিন", "error");
-      return;
-    }
+    if (!val || val <= 0) return toast("সঠিক টার্গেট দিন", "error");
     state.settings.dailyTarget = val;
     saveState();
-    renderAll();
-    checkDailyTarget();
-    toast("✅ দৈনিক টার্গেট সেভ হয়েছে: " + fmt(val) + " ৳", "success");
+    renderSettingsAndProgress();
+    toast("✅ টার্গেট সেভ হয়েছে", "success");
   });
 
-  $("#addCategoryBtn").addEventListener("click", addCategory);
-  $("#newCategoryInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") addCategory();
+  // নতুন ব্যক্তি যোগ
+  $("#addPersonBtn").addEventListener("click", () => {
+    const name = $("#newPersonInput").value.trim();
+    if (!name) return toast("ব্যক্তির নাম লিখুন", "error");
+    if (state.persons.some(p => p.name.toLowerCase() === name.toLowerCase())) return toast("এই নাম ইতিমধ্যেই আছে", "warn");
+    
+    state.persons.push({ id: uid(), name, comments: [], createdAt: new Date().toISOString() });
+    $("#newPersonInput").value = "";
+    saveState();
+    renderPersons();
+    toast("✅ ব্যক্তি যোগ হয়েছে", "success");
   });
 
-  function addCategory() {
-    const name = $("#newCategoryInput").value.trim();
-    if (!name) return toast("খরচের নাম লিখুন", "error");
-    if (state.categories.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
-      return toast("এই নামে খাত ইতিমধ্যেই আছে", "warn");
+  // ব্যক্তি ডিলিট
+  $("#personList").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-del-person]");
+    if (btn) {
+      const id = btn.dataset.delPerson;
+      if (confirm("এই ব্যক্তির সব হিসাব ডিলিট করবেন?")) {
+        state.persons = state.persons.filter(p => p.id !== id);
+        state.transactions = state.transactions.filter(t => t.personId !== id);
+        saveState();
+        renderPersons();
+        renderGlobalSummary();
+        if (currentPersonId === id) $("#personDetailsCard").classList.add("hidden");
+        toast("ডিলিট হয়েছে", "warn");
+      }
     }
-    state.categories.push({
-      id: uid(),
-      name,
-      createdAt: new Date().toISOString(),
+  });
+
+  // ডিটেইলস বন্ধ করা
+  $("#closeDetailsBtn").addEventListener("click", () => {
+    $("#personDetailsCard").classList.add("hidden");
+    currentPersonId = null;
+  });
+
+  // ব্যক্তির ভেতরে জমা যোগ
+  $("#addPersonIncomeBtn").addEventListener("click", () => {
+    if (!currentPersonId) return;
+    showInputModal({
+      title: "💵 জমা যোগ করুন",
+      fields: [
+        { id: "amount", label: "টাকার পরিমাণ (৳)", type: "number" },
+        { id: "note", label: "নোট (ঐচ্ছিক)", type: "text", placeholder: "বিবরণ..." }
+      ],
+      onSubmit: (vals) => {
+        const amt = Number(vals.amount);
+        if (!amt || amt <= 0) return toast("সঠিক পরিমাণ দিন", "error");
+        state.transactions.push({
+          id: uid(), personId: currentPersonId, type: "income", title: "জমা", amount: amt, note: vals.note || "", date: new Date().toISOString()
+        });
+        saveState();
+        renderPersonDetails(currentPersonId);
+        renderPersons();
+        renderGlobalSummary();
+        toast("✅ জমা যোগ হয়েছে", "success");
+      }
     });
-    $("#newCategoryInput").value = "";
-    saveState();
-    renderCategories();
-    toast("✅ খাত যোগ হয়েছে: " + name, "success");
-  }
+  });
 
-  $("#categoryList").addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-action]");
-    if (!btn) return;
-    const id = btn.dataset.id;
-    const action = btn.dataset.action;
+  // ব্যক্তির ভেতরে খরচ যোগ
+  $("#addPersonExpenseBtn").addEventListener("click", () => {
+    if (!currentPersonId) return;
+    showInputModal({
+      title: "➖ খরচ যোগ করুন",
+      fields: [
+        { id: "title", label: "খরচের খাত (যেমন: বাজার)", type: "text" },
+        { id: "amount", label: "টাকার পরিমাণ (৳)", type: "number" },
+        { id: "note", label: "নোট (ঐচ্ছিক)", type: "text", placeholder: "কী কিনলেন?" }
+      ],
+      onSubmit: (vals) => {
+        const amt = Number(vals.amount);
+        if (!vals.title) return toast("খরচের নাম দিন", "error");
+        if (!amt || amt <= 0) return toast("সঠিক পরিমাণ দিন", "error");
+        state.transactions.push({
+          id: uid(), personId: currentPersonId, type: "expense", title: vals.title, amount: amt, note: vals.note || "", date: new Date().toISOString()
+        });
+        saveState();
+        renderPersonDetails(currentPersonId);
+        renderPersons();
+        renderGlobalSummary();
+        toast("✅ খরচ যোগ হয়েছে", "success");
+      }
+    });
+  });
 
-    if (action === "add-expense") openExpenseModal(id);
-    if (action === "comment") openCommentModal(id);
-    if (action === "delete-cat") {
-      if (!confirm("এই খাতটি ডিলিট করবেন? এর লেনদেনগুলোও ডিলিট হবে।")) return;
-      state.transactions = state.transactions.filter((t) => t.categoryId !== id);
-      state.categories = state.categories.filter((c) => c.id !== id);
-      saveState();
-      renderAll();
-      toast("খাত ডিলিট হয়েছে", "warn");
+  // ব্যক্তির ভেতরে কমেন্ট যোগ
+  $("#addPersonCommentBtn").addEventListener("click", () => {
+    if (!currentPersonId) return;
+    showInputModal({
+      title: "💬 কমেন্ট যোগ করুন",
+      fields: [{ id: "text", label: "আপনার কমেন্ট", type: "textarea" }],
+      onSubmit: (vals) => {
+        if (!vals.text) return toast("কমেন্ট লিখুন", "error");
+        const person = state.persons.find(p => p.id === currentPersonId);
+        const today = new Date().toLocaleString("bn-BD", { dateStyle: "short", timeStyle: "short" });
+        if (!person.comments) person.comments = [];
+        person.comments.push({ text: vals.text, date: today });
+        saveState();
+        renderPersonDetails(currentPersonId);
+        toast("✅ কমেন্ট সেভ হয়েছে", "success");
+      }
+    });
+  });
+
+  // লেনদেন ডিলিট
+  $("#personTransactionList").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-del-tx]");
+    if (btn) {
+      const id = btn.dataset.delTx;
+      if (confirm("এই লেনদেনটি ডিলিট করবেন?")) {
+        state.transactions = state.transactions.filter(t => t.id !== id);
+        saveState();
+        renderPersonDetails(currentPersonId);
+        renderPersons();
+        renderGlobalSummary();
+        toast("ডিলিট হয়েছে", "warn");
+      }
     }
   });
 
-  $("#transactionList").addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-del]");
-    if (!btn) return;
-    const id = btn.dataset.del;
-    state.transactions = state.transactions.filter((t) => t.id !== id);
-    saveState();
-    renderAll();
-    toast("লেনদেন ডিলিট হয়েছে", "warn");
+  // PDF ডাউনলোড
+  $("#downloadPdfBtn").addEventListener("click", () => {
+    if (!currentPersonId) return;
+    const person = state.persons.find(p => p.id === currentPersonId);
+    const inc = getPersonTotal(currentPersonId, "income");
+    const exp = getPersonTotal(currentPersonId, "expense");
+    const txs = state.transactions.filter(t => t.personId === currentPersonId).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+    // PDF টেমপ্লেটে ডাটা বসানো
+    $("#pdfPersonName").textContent = person.name;
+    $("#pdfDate").textContent = new Date().toLocaleDateString("bn-BD");
+    $("#pdfIncome").textContent = fmt(inc) + " ৳";
+    $("#pdfExpense").textContent = fmt(exp) + " ৳";
+    $("#pdfBalance").textContent = fmt(inc - exp) + " ৳";
+
+    const tbody = $("#pdfTableBody");
+    tbody.innerHTML = "";
+    txs.forEach(tx => {
+      const tr = document.createElement("tr");
+      tr.style.borderBottom = "1px solid #eee";
+      const dateStr = new Date(tx.date).toLocaleDateString("bn-BD");
+      const incomeVal = tx.type === "income" ? fmt(tx.amount) + " ৳" : "";
+      const expenseVal = tx.type === "expense" ? fmt(tx.amount) + " ৳" : "";
+      const title = tx.type === "expense" ? tx.title : (tx.note || "জমা");
+      
+      tr.innerHTML = `
+        <td style="padding: 8px;">${dateStr}</td>
+        <td style="padding: 8px;">${escapeHtml(title)}</td>
+        <td style="padding: 8px; text-align: right; color: #11998e;">${incomeVal}</td>
+        <td style="padding: 8px; text-align: right; color: #d63031;">${expenseVal}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const pdfComments = $("#pdfComments");
+    pdfComments.innerHTML = "";
+    if (person.comments && person.comments.length > 0) {
+      person.comments.forEach(c => {
+        const li = document.createElement("li");
+        li.style.marginBottom = "5px";
+        li.innerHTML = `${escapeHtml(c.text)} <span style="font-size:0.8rem; color:#888;">(${c.date})</span>`;
+        pdfComments.appendChild(li);
+      });
+    } else {
+      pdfComments.innerHTML = "<li>কোনো কমেন্ট নেই</li>";
+    }
+
+    // PDF তৈরি
+    const element = document.getElementById("pdfTemplate");
+    element.style.display = "block"; // সাময়িকভাবে দেখানো
+    
+    const opt = {
+      margin:       10,
+      filename:     `${person.name}_Expense_Report.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2 },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
+      element.style.display = "none"; // ডাউনলোড শেষে আবার লুকানো
+      toast("✅ PDF ডাউনলোড শুরু হয়েছে", "success");
+    });
   });
 
   $("#enableNotifBtn").addEventListener("click", requestNotifPermission);
-
-  const incBtn = document.createElement("button");
-  incBtn.className = "btn primary";
-  incBtn.textContent = "💵 জমা ক্যাশ যোগ";
-  incBtn.style.marginTop = "12px";
-  incBtn.addEventListener("click", openIncomeModal);
-  document.querySelector(".summary-card").appendChild(incBtn);
-
-  if ("Notification" in window && Notification.permission === "granted") {
-    $("#notifBar").classList.add("hidden");
-  }
-
-  setInterval(() => {
-    renderSettingsAndProgress();
-    if (targetAlertShownFor && targetAlertShownFor !== todayKey()) {
-      targetAlertShownFor = null;
-    }
-    checkDailyTarget();
-  }, 60 * 1000);
 }
 
-function seedIfEmpty() {
-  if (state.categories.length === 0 && state.transactions.length === 0) {
-    state.settings = { dailyTarget: 500, currency: "৳" };
-    state.categories = [
-      { id: uid(), name: "বাজার", createdAt: new Date().toISOString() },
-      { id: uid(), name: "যাতায়াত", createdAt: new Date().toISOString() },
-    ];
-    state.transactions = [
-      {
-        id: uid(),
-        type: "income",
-        categoryId: null,
-        title: "জমা ক্যাশ",
-        amount: 5000,
-        note: "শুরুতে জমা",
-        date: new Date().toISOString(),
-      },
-    ];
-    saveState();
-  }
-}
-
+// অ্যাপ শুরু
 function init() {
   loadState();
-  seedIfEmpty();
   renderHeaderDate();
-  renderAll();
+  renderSettingsAndProgress();
+  renderGlobalSummary();
+  renderPersons();
   setupEvents();
-  checkDailyTarget();
 }
 
 document.addEventListener("DOMContentLoaded", init);
