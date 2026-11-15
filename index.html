@@ -5,13 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>আমার খরচের খাতা</title>
   
-  <!-- PWA Requirements -->
   <meta name="theme-color" content="#764ba2" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/png" href="icon-192.png" />
   <link rel="apple-touch-icon" href="icon-192.png" />
   
   <link rel="stylesheet" href="style.css" />
+  
+  <!-- PDF তৈরি করার লাইব্রেরি -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -37,16 +39,62 @@
       </div>
     </section>
 
+    <!-- নতুন সেকশন: ব্যক্তির নাম যোগ করা -->
     <section class="card">
-      <h2>➕ নতুন খরচের খাত</h2>
+      <h2>👤 নতুন ব্যক্তির নাম</h2>
       <div class="add-row">
-        <input type="text" id="newCategoryInput" placeholder="খরচের নাম (যেমন: বাজার, যাতায়াত)" />
-        <button id="addCategoryBtn" class="btn primary">Add</button>
+        <input type="text" id="newPersonInput" placeholder="ব্যক্তির নাম (যেমন: রহিম)" />
+        <button id="addPersonBtn" class="btn primary">Add Person</button>
       </div>
     </section>
 
+    <!-- ব্যক্তিদের তালিকা -->
+    <section class="card">
+      <h2>📋 ব্যক্তিদের তালিকা</h2>
+      <div id="personList" class="category-list"></div>
+      <div id="emptyPerson" class="empty">এখনো কোনো ব্যক্তির নাম নেই। উপরে Add করুন।</div>
+    </section>
+
+    <!-- ডিটেইলস ভিউ (যখন কোনো ব্যক্তির নামে ক্লিক করা হবে) -->
+    <section class="card hidden" id="personDetailsCard">
+      <div class="details-header">
+        <h2 id="detailsPersonName">নাম</h2>
+        <button id="closeDetailsBtn" class="btn danger small">✖ বন্ধ করুন</button>
+      </div>
+      
+      <div class="summary-grid" style="margin-bottom: 16px;">
+        <div class="summary-box income">
+          <span>মোট জমা</span>
+          <b id="detailsTotalIncome">0 ৳</b>
+        </div>
+        <div class="summary-box expense">
+          <span>মোট খরচ</span>
+          <b id="detailsTotalExpense">0 ৳</b>
+        </div>
+        <div class="summary-box balance">
+          <span>ব্যালেন্স</span>
+          <b id="detailsBalance">0 ৳</b>
+        </div>
+      </div>
+
+      <div class="add-row" style="margin-bottom: 16px;">
+        <button id="addPersonIncomeBtn" class="btn primary" style="flex:1;">➕ জমা যোগ</button>
+        <button id="addPersonExpenseBtn" class="btn danger" style="flex:1;">➖ খরচ যোগ</button>
+        <button id="addPersonCommentBtn" class="btn ghost" style="flex:1;">💬 কমেন্ট</button>
+      </div>
+
+      <h3>📜 লেনদেনের ইতিহাস</h3>
+      <div id="personTransactionList" class="transaction-list" style="margin-top: 10px;"></div>
+      
+      <h3 style="margin-top: 16px;">💬 কমেন্টসমূহ</h3>
+      <div id="personCommentList" class="comment-list" style="margin-top: 10px;"></div>
+
+      <button id="downloadPdfBtn" class="btn primary" style="width: 100%; margin-top: 20px;">📥 PDF ডাউনলোড করুন</button>
+    </section>
+
+    <!-- গ্লোবাল সারসংক্ষেপ -->
     <section class="card summary-card">
-      <h2>📊 সারসংক্ষেপ</h2>
+      <h2>📊 সার্বিক সারসংক্ষেপ</h2>
       <div class="summary-grid">
         <div class="summary-box income">
           <span>মোট জমা (Cash)</span>
@@ -63,18 +111,6 @@
       </div>
     </section>
 
-    <section class="card">
-      <h2>🗂️ খরচের খাতসমূহ</h2>
-      <div id="categoryList" class="category-list"></div>
-      <div id="emptyState" class="empty">এখনো কোনো খাত নেই। উপরে Add করুন।</div>
-    </section>
-
-    <section class="card">
-      <h2>📜 সব লেনদেন</h2>
-      <div id="transactionList" class="transaction-list"></div>
-      <div id="emptyTx" class="empty">এখনো কোনো লেনদেন নেই।</div>
-    </section>
-
     <footer class="foot">
       <p>© আপনার ব্যক্তিগত খরচের খাতা — সব ডাটা আপনার ব্রাউজারেই সংরক্ষিত</p>
     </footer>
@@ -87,9 +123,37 @@
     <button id="enableNotifBtn" class="btn small">অনুমতি দিন</button>
   </div>
 
+  <!-- PDF তৈরি করার জন্য লুকানো টেমপ্লেট -->
+  <div id="pdfTemplate" style="display: none; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #fff;">
+    <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #764ba2; padding-bottom: 10px;">
+      <h1 style="color: #764ba2; margin: 0;">হিসাবের রিপোর্ট</h1>
+      <p style="margin: 5px 0 0 0; color: #555;">ব্যক্তি: <b id="pdfPersonName"></b></p>
+      <p style="margin: 5px 0 0 0; color: #555; font-size: 0.9rem;">তারিখ: <span id="pdfDate"></span></p>
+    </div>
+    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; background: #f8f9ff; padding: 15px; border-radius: 10px;">
+      <div>মোট জমা: <b id="pdfIncome" style="color: #11998e;"></b></div>
+      <div>মোট খরচ: <b id="pdfExpense" style="color: #d63031;"></b></div>
+      <div>ব্যালেন্স: <b id="pdfBalance" style="color: #4a3fb5;"></b></div>
+    </div>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+      <thead>
+        <tr style="background: #764ba2; color: #fff;">
+          <th style="padding: 8px; text-align: left;">তারিখ</th>
+          <th style="padding: 8px; text-align: left;">বিবরণ</th>
+          <th style="padding: 8px; text-align: right;">জমা</th>
+          <th style="padding: 8px; text-align: right;">খরচ</th>
+        </tr>
+      </thead>
+      <tbody id="pdfTableBody"></tbody>
+    </table>
+    <div style="margin-top: 20px;">
+      <h3 style="color: #764ba2; border-bottom: 1px solid #ccc; padding-bottom: 5px;">কমেন্টসমূহ</h3>
+      <ul id="pdfComments" style="padding-left: 20px; color: #444;"></ul>
+    </div>
+  </div>
+
   <script src="app.js"></script>
   <script>
-    // Service Worker Registration (PWA)
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
