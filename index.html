@@ -32,6 +32,13 @@
 
     <!-- মেইন কন্টেন্ট এরিয়া -->
     <main class="main-content">
+
+      <!-- নোটিফিকেশন চালুর বাটন (একবার Allow করলে অটো চলে যাবে) -->
+      <div id="notifyPermissionBar" class="hidden" style="margin-bottom: 12px;">
+        <button id="enableNotifyBtn" class="btn ghost full-width" style="border: 1px dashed var(--primary); color: var(--primary); font-size: 0.84rem;">
+          🔔 অ্যাপ থেকে বের হলেই ব্যাকআপ রিমাইন্ডার পেতে চালু করুন
+        </button>
+      </div>
       
       <!-- ট্যাব ১: হোম -->
       <div id="tabHome" class="tab-view active">
@@ -83,7 +90,7 @@
         </section>
       </div>
 
-      <!-- ট্যাব ২: ব্যক্তির ডিটেইলস ভিউ (হোম থেকে ক্লিক করলে ওপেন হবে) -->
+      <!-- ট্যাব ২: ব্যক্তির ডিটেইলস ভিউ -->
       <div id="personDetailsView" class="tab-view hidden">
         <div class="details-topbar">
           <button id="backToHomeBtn" class="btn ghost small">⬅️ ফিরে যান</button>
@@ -196,7 +203,7 @@
 
     </main>
 
-    <!-- ফ্লোটিং অ্যাকশন বাটন (Quick Add) -->
+    <!-- ফ্লোটিং অ্যাকশন বাটন -->
     <button id="fabAddBtn" class="fab" title="দ্রুত লেনদেন যোগ করুন">➕</button>
 
     <!-- বটম নেভিগেশন বার -->
@@ -289,10 +296,27 @@
     </div>
   </div>
 
+  <!-- মডাল ৪: বের হওয়ার সময় ব্যাকআপ সতর্কতা -->
+  <div id="exitBackupModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box" style="text-align: center;">
+      <div style="font-size: 2.5rem; margin-bottom: 8px;">💾</div>
+      <h3 style="margin-bottom: 8px;">অ্যাপ থেকে বের হচ্ছেন?</h3>
+      <p id="exitBackupMsg" style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+        নতুন তথ্য যদি যোগ করে থাকেন ব্যাকআপ নিয়ে নিন।
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button id="exitDownloadBackupBtn" class="btn primary full-width">⬇️ এখনই ব্যাকআপ নিন (JSON)</button>
+        <button id="exitConfirmLeaveBtn" class="btn danger full-width">🚪 বের হয়ে যান</button>
+        <button id="exitStayBtn" class="btn ghost full-width">✖ অ্যাপেই থাকুন</button>
+      </div>
+    </div>
+  </div>
+
   <!-- টোস্ট মেসেজ -->
   <div id="toast" class="toast"></div>
 
-  <!-- PDF তৈরির জন্য অফ-স্ক্রিন টেমপ্লেট (display:none নয়, যাতে blank PDF না আসে) -->
+  <!-- PDF তৈরির জন্য অফ-স্ক্রিন টেমপ্লেট -->
   <div id="pdfWrapper" style="position: fixed; left: -9999px; top: 0; width: 780px; background: #fff;">
     <div id="pdfTemplate" style="padding: 25px; font-family: sans-serif; background: #fff; color: #111;">
       <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #6c5ce7; padding-bottom: 10px;">
