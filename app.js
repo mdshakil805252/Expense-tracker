@@ -69,8 +69,7 @@ function initDate() {
 // ট্যাব নেভিগেশন
 document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => {
-    const tabId = btn.dataset.tab;
-    switchTab(tabId);
+    switchTab(btn.dataset.tab);
   });
 });
 
@@ -110,7 +109,6 @@ function renderDashboard() {
   document.getElementById('totalExpense').textContent = `${formatMoney(totalExp)} ৳`;
   document.getElementById('totalBalance').textContent = `${formatMoney(totalInc - totalExp)} ৳`;
 
-  // দৈনিক টার্গেট প্রোগ্রেস
   const target = Number(state.dailyTarget || 0);
   document.getElementById('dailyTargetInput').value = target || '';
   document.getElementById('todayTarget').textContent = formatMoney(target);
@@ -219,7 +217,6 @@ function renderPersonDetails() {
   document.getElementById('detailsTotalExpense').textContent = `${formatMoney(exp)} ৳`;
   document.getElementById('detailsBalance').textContent = `${formatMoney(inc - exp)} ৳`;
 
-  // লেনদেন তালিকা
   const txListEl = document.getElementById('personTransactionList');
   txListEl.innerHTML = '';
   const txs = [...person.transactions]
@@ -259,7 +256,6 @@ function renderPersonDetails() {
     });
   }
 
-  // কমেন্ট তালিকা
   const cListEl = document.getElementById('personCommentList');
   cListEl.innerHTML = '';
   if (!person.comments.length) {
@@ -296,7 +292,6 @@ document.querySelectorAll('.pill').forEach(pill => {
   });
 });
 
-// ব্যক্তি ডিলিট
 document.getElementById('deletePersonBtn').addEventListener('click', () => {
   const person = state.people.find(p => p.id === activePersonId);
   if (person && confirm(`"${person.name}" এবং তার সব হিসাব মুছে ফেলবেন?`)) {
@@ -457,7 +452,7 @@ document.getElementById('saveCommentBtn').addEventListener('click', () => {
 
 // অ্যানালিটিক্স রেন্ডার
 function renderAnalytics() {
-  const currentMonth = todayISO().slice(0, 7); // YYYY-MM
+  const currentMonth = todayISO().slice(0, 7);
   let mInc = 0, mExp = 0;
 
   const personExpenses = state.people.map(p => {
@@ -624,7 +619,104 @@ document.getElementById('installAppBtn').addEventListener('click', async () => {
   document.getElementById('installAppBtn').classList.add('hidden');
 });
 
+// ===== অ্যাপ থেকে বের হলেই বাংলায় ব্যাকআপ রিমাইন্ডার =====
+let allowAppExit = false;
+
+function checkNotifyBar() {
+  const bar = document.getElementById('notifyPermissionBar');
+  if (!bar) return;
+  if ('Notification' in window && Notification.permission === 'default') {
+    bar.classList.remove('hidden');
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+document.getElementById('enableNotifyBtn')?.addEventListener('click', async () => {
+  if (!('Notification' in window)) return showToast('এই ব্রাউজারে নোটিফিকেশন সাপোর্ট নেই');
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    showToast('🔔 ব্যাকআপ রিমাইন্ডার চালু হয়েছে!');
+  }
+  checkNotifyBar();
+});
+
+function pushExitGuard() {
+  if (!allowAppExit && (!history.state || !history.state.khataGuard)) {
+    history.pushState({ khataGuard: true }, '');
+  }
+}
+window.addEventListener('load', pushExitGuard);
+window.addEventListener('pointerdown', pushExitGuard);
+
+window.addEventListener('popstate', () => {
+  if (allowAppExit) return;
+
+  const openModal = document.querySelector('.modal:not(.hidden)');
+  if (openModal) {
+    closeAllModals();
+    pushExitGuard();
+    return;
+  }
+
+  const isHomeActive = document.getElementById('tabHome').classList.contains('active');
+  if (!isHomeActive) {
+    switchTab('tabHome');
+    pushExitGuard();
+    return;
+  }
+
+  pushExitGuard();
+  document.getElementById('exitBackupMsg').textContent =
+    'নতুন তথ্য যদি যোগ করে থাকেন ব্যাকআপ নিয়ে নিন।';
+  document.getElementById('exitBackupModal').classList.remove('hidden');
+});
+
+document.getElementById('exitDownloadBackupBtn')?.addEventListener('click', () => {
+  document.getElementById('exportBackupBtn').click();
+  document.getElementById('exitBackupModal').classList.add('hidden');
+});
+
+document.getElementById('exitStayBtn')?.addEventListener('click', () => {
+  document.getElementById('exitBackupModal').classList.add('hidden');
+});
+
+document.getElementById('exitConfirmLeaveBtn')?.addEventListener('click', () => {
+  allowAppExit = true;
+  document.getElementById('exitBackupModal').classList.add('hidden');
+  history.back();
+  window.close();
+  showToast('বের হতে ফোনের Back বাটনে আরেকবার চাপ দিন');
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    if ('Notification' in window && Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification('💰 আমার খরচের খাতা', {
+          body: 'নতুন তথ্য যদি যোগ করে থাকেন ব্যাকআপ নিয়ে নিন।',
+          icon: 'icon-192.png',
+          badge: 'icon-192.png',
+          tag: 'backup-reminder',
+          renotify: true
+        });
+      }).catch(() => {});
+    }
+  } else if (document.visibilityState === 'visible') {
+    allowAppExit = false;
+    pushExitGuard();
+  }
+});
+
+window.addEventListener('beforeunload', (e) => {
+  if (!allowAppExit) {
+    e.preventDefault();
+    e.returnValue = 'নতুন তথ্য যদি যোগ করে থাকেন ব্যাকআপ নিয়ে নিন।';
+  }
+});
+
 // ইনিশিয়ালাইজ
 applyTheme();
 initDate();
 renderDashboard();
+checkNotifyBar();
