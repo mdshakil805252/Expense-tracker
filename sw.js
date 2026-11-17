@@ -1,4 +1,4 @@
-const CACHE_NAME = 'khata-app-v2';
+const CACHE_NAME = 'khata-app-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -39,5 +39,15 @@ self.addEventListener('fetch', (event) => {
         });
       });
     }).catch(() => caches.match('./index.html'))
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      if (list.length > 0) return list[0].focus();
+      return clients.openWindow('./index.html');
+    })
   );
 });
